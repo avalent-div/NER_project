@@ -1,0 +1,12 @@
+data/reddit_raw.csv
+data/reddit_clean.csv
+data/ner_results.csv
+data/ner_aggregated.csv
+__pycache__/
+*.pyc
+.env
+venv/
+spark-warehouse/
+derby.log
+metastore_db/
+*.log
