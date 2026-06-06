@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Entity Dashboard{% endblock %}
+{% block page_title %}Entity Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- FILTER BAR -->
+<div class="card" style="padding:16px 24px;margin-bottom:24px;">
+  <form method="GET" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <i class="fa-solid fa-filter" style="color:var(--text-muted);font-size:13px;"></i>
+      <span style="font-size:13px;font-weight:600;">Filter:</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:12px;color:var(--text-muted);">Label</label>
+      <select name="label" class="form-select" style="width:130px;" onchange="this.form.submit()">
+        <option value="all" {% if label_filter=='all' %}selected{% endif %}>Semua Label</option>
+        <option value="ORG"   {% if label_filter=='ORG' %}selected{% endif %}>ORG</option>
+        <option value="LOC"   {% if label_filter=='LOC' %}selected{% endif %}>LOC</option>
+        <option value="EVENT" {% if label_filter=='EVENT' %}selected{% endif %}>EVENT</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:12px;color:var(--text-muted);">Model</label>
+      <select name="model" class="form-select" style="width:150px;" onchange="this.form.submit()">
+        <option value="all"          {% if model_filter=='all' %}selected{% endif %}>Semua Model</option>
+        <option value="spaCy"        {% if model_filter=='spaCy' %}selected{% endif %}>spaCy</option>
+        <option value="Transformers" {% if model_filter=='Transformers' %}selected{% endif %}>BERT</option>
+      </select>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <span class="badge badge-org">ORG: {{ "{:,}".format(stats.org) }}</span>
+      <span class="badge badge-loc">LOC: {{ "{:,}".format(stats.loc) }}</span>
+      <span class="badge badge-event">EVENT: {{ "{:,}".format(stats.event) }}</span>
+    </div>
+  </form>
+</div>
+
+<!-- CHARTS ROW -->
+<div class="grid-3" style="margin-bottom:20px;">
+
+  <!-- ORG Chart -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--indigo);"></span>
+        Top 10 Organisasi
+      </div>
+      <span class="badge badge-org">ORG</span>
+    </div>
+    <div class="card-body">
+      <canvas id="orgChart" height="320"></canvas>
+    </div>
+  </div>
+
+  <!-- LOC Chart -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--primary);"></span>
+        Top 10 Lokasi
+      </div>
+      <span class="badge badge-loc">LOC</span>
+    </div>
+    <div class="card-body">
+      <canvas id="locChart" height="320"></canvas>
+    </div>
+  </div>
+
+  <!-- EVENT Chart -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--emerald);"></span>
+        Top 10 Event
+      </div>
+      <span class="badge badge-event">EVENT</span>
+    </div>
+    <div class="card-body">
+      <canvas id="eventChart" height="320"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- TABLES ROW -->
+<div class="grid-3">
+
+  <!-- ORG Table -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Tabel ORG</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="table">
+        <thead><tr><th>#</th><th>Entitas</th><th>Freq</th></tr></thead>
+        <tbody id="org-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LOC Table -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Tabel LOC</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="table">
+        <thead><tr><th>#</th><th>Entitas</th><th>Freq</th></tr></thead>
+        <tbody id="loc-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- EVENT Table -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Tabel EVENT</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="table">
+        <thead><tr><th>#</th><th>Entitas</th><th>Freq</th></tr></thead>
+        <tbody id="event-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const topOrg   = {{ top_org|safe }};
+const topLoc   = {{ top_loc|safe }};
+const topEvent = {{ top_event|safe }};
+
+function makeHBar(canvasId, data, color) {
+  new Chart(document.getElementById(canvasId), {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.entity.length > 20 ? d.entity.slice(0,20)+'…' : d.entity),
+      datasets: [{
+        data: data.map(d => d.freq),
+        backgroundColor: color + '22',
+        borderColor: color,
+        borderWidth: 1.5,
+        borderRadius: 5
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#f1f5f9' }, ticks: { font: { family: 'DM Mono', size: 10 } } },
+        y: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 11 } } }
+      }
+    }
+  });
+}
+
+function fillTable(tbodyId, data, color) {
+  const tb = document.getElementById(tbodyId);
+  data.forEach((d, i) => {
+    tb.innerHTML += `
+      <tr>
+        <td style="color:var(--text-muted);font-size:11px;">${i+1}</td>
+        <td style="font-weight:600;font-size:13px;">${d.entity}</td>
+        <td>
+          <span style="font-family:'DM Mono',monospace;font-size:12px;
+                       background:${color}15;color:${color};
+                       padding:2px 8px;border-radius:4px;">
+            ${d.freq.toLocaleString()}
+          </span>
+        </td>
+      </tr>`;
+  });
+}
+
+makeHBar('orgChart',   topOrg,   '#6366f1');
+makeHBar('locChart',   topLoc,   '#0ea5e9');
+makeHBar('eventChart', topEvent, '#10b981');
+
+fillTable('org-table',   topOrg,   '#6366f1');
+fillTable('loc-table',   topLoc,   '#0ea5e9');
+fillTable('event-table', topEvent, '#10b981');
+</script>
+{% endblock %}

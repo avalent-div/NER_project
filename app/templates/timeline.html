@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Time Analysis{% endblock %}
+{% block page_title %}Time-based Analysis{% endblock %}
+
+{% block content %}
+
+<!-- LINE CHART -->
+<div class="card" style="margin-bottom:24px;">
+  <div class="card-header">
+    <div class="card-title">
+      <span class="dot" style="background:var(--primary);"></span>
+      Tren Entitas per Bulan
+    </div>
+    <div style="display:flex;gap:8px;">
+      <span class="badge badge-org">ORG</span>
+      <span class="badge badge-loc">LOC</span>
+      <span class="badge badge-event">EVENT</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <canvas id="timelineChart" height="120"></canvas>
+  </div>
+</div>
+
+<!-- ROW 2 -->
+<div class="grid-2">
+
+  <!-- Trending entities -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--amber);"></span>
+        Top 10 Entitas Trending
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Entitas</th>
+            <th>Frekuensi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i, e in enumerate(trending) %}
+          <tr>
+            <td style="color:var(--text-muted);font-size:11px;">{{ i+1 }}</td>
+            <td style="font-weight:600;">{{ e.entity }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="progress-bar-wrap" style="width:80px;">
+                  <div class="progress-bar"
+                       style="width:{{ [e.freq / trending[0].freq * 100, 100]|min|int }}%;
+                              background:var(--amber);"></div>
+                </div>
+                <span style="font-family:'DM Mono',monospace;font-size:12px;">
+                  {{ "{:,}".format(e.freq) }}
+                </span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Info card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--emerald);"></span>
+        Informasi Dataset
+      </div>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        {% for label, value, color in [
+          ('Total Bulan Tercakup', '2013 — 2026', 'var(--primary)'),
+          ('Sumber Data', 'Reddit JSON API', 'var(--indigo)'),
+          ('Total Post', '22.500 postingan', 'var(--emerald)'),
+          ('Total Subreddit', '24 subreddit', 'var(--amber)')
+        ] %}
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:12px;background:var(--bg);border-radius:8px;">
+          <span style="font-size:13px;color:var(--text-muted);">{{ label }}</span>
+          <span style="font-size:13px;font-weight:700;color:{{ color }};">{{ value }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const months     = {{ months|safe }};
+const orgCounts  = {{ org_counts|safe }};
+const locCounts  = {{ loc_counts|safe }};
+const evtCounts  = {{ event_counts|safe }};
+
+new Chart(document.getElementById('timelineChart'), {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [
+      {
+        label: 'ORG',
+        data: orgCounts,
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99,102,241,0.08)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointHoverRadius: 5
+      },
+      {
+        label: 'LOC',
+        data: locCounts,
+        borderColor: '#0ea5e9',
+        backgroundColor: 'rgba(14,165,233,0.08)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointHoverRadius: 5
+      },
+      {
+        label: 'EVENT',
+        data: evtCounts,
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16,185,129,0.08)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointHoverRadius: 5
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top', labels: { font: { family: 'DM Sans', size: 12 } } }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 18 }
+      },
+      y: {
+        grid: { color: '#f1f5f9' },
+        ticks: { font: { family: 'DM Mono', size: 11 } }
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

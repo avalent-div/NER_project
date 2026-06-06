@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Text Annotator{% endblock %}
+{% block page_title %}Text Annotator{% endblock %}
+
+{% block content %}
+
+<div class="grid-2" style="align-items:start;">
+
+  <!-- INPUT FORM -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--primary);"></span>
+        Input Teks
+      </div>
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        <div style="margin-bottom:16px;">
+          <label class="form-label">Teks yang ingin dianalisis</label>
+          <textarea name="text" class="form-control" rows="8"
+            placeholder="Masukkan teks di sini... (contoh: The United Nations held a summit in New York to discuss climate change.)"
+          >{{ input_text }}</textarea>
+        </div>
+        <div style="margin-bottom:20px;">
+          <label class="form-label">Pilih Model</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            {% for val, label in [('both','Kedua Model'),('spacy','spaCy'),('bert','BERT')] %}
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;
+                          padding:8px 14px;border-radius:8px;border:1px solid var(--border);
+                          font-size:13px;transition:all 0.15s;"
+                   id="lbl-{{ val }}">
+              <input type="radio" name="model" value="{{ val }}"
+                     {% if model_used == val %}checked{% endif %}
+                     onchange="updateLabels()">
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          Analisis Entitas
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- LEGEND + TIPS -->
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background:var(--amber);"></span>
+          Keterangan Label
+        </div>
+      </div>
+      <div class="card-body">
+        {% for label, color, desc in [
+          ('ORG','#6366f1','Organisasi, perusahaan, institusi'),
+          ('LOC','#0ea5e9','Lokasi, negara, kota'),
+          ('EVENT','#10b981','Peristiwa, kejadian penting')
+        ] %}
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <span style="background:{{ color }}20;color:{{ color }};border:1px solid {{ color }}40;
+                       padding:4px 12px;border-radius:6px;font-size:12px;font-weight:700;min-width:60px;text-align:center;">
+            {{ label }}
+          </span>
+          <span style="font-size:13px;color:var(--text-muted);">{{ desc }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background:var(--emerald);"></span>
+          Contoh Teks
+        </div>
+      </div>
+      <div class="card-body">
+        {% for ex in [
+          'The United Nations held a summit in New York.',
+          'Google and Microsoft announced partnership at CES 2026.',
+          'Indonesia hosted the ASEAN Games in Jakarta last month.'
+        ] %}
+        <div onclick="document.querySelector('textarea').value='{{ ex }}'"
+             style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);
+                    font-size:12px;color:var(--text-muted);cursor:pointer;
+                    margin-bottom:8px;transition:all 0.15s;"
+             onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'"
+             onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
+          <i class="fa-regular fa-copy" style="margin-right:6px;"></i>{{ ex }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- RESULT -->
+{% if result %}
+<div style="margin-top:24px;">
+
+  {% if result.spacy_html %}
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--indigo);"></span>
+        Hasil spaCy — displaCy Visualization
+      </div>
+      <span class="badge" style="background:var(--indigo-light);color:var(--indigo);">en_core_web_trf</span>
+    </div>
+    <div class="card-body">
+      <div style="font-size:15px;line-height:2.2;padding:8px 0;">
+        {{ result.spacy_html|safe }}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if result.bert_entities %}
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--primary);"></span>
+        Hasil BERT — Entitas Terdeteksi
+      </div>
+      <span class="badge" style="background:var(--primary-light);color:var(--primary);">dslim/bert-base-NER</span>
+    </div>
+    <div class="card-body">
+      {% if result.bert_entities %}
+      <div style="display:flex;flex-wrap:wrap;gap:10px;">
+        {% for e in result.bert_entities %}
+        {% set colors = {'ORG':'#6366f1','LOC':'#0ea5e9','EVENT':'#10b981','PER':'#f59e0b','MISC':'#94a3b8'} %}
+        {% set c = colors.get(e.entity, '#94a3b8') %}
+        <div style="border:1px solid {{ c }}40;background:{{ c }}10;
+                    border-radius:8px;padding:10px 14px;min-width:120px;">
+          <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px;">{{ e.word }}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span style="font-size:11px;font-weight:700;color:{{ c }};">{{ e.entity }}</span>
+            <span style="font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;">{{ e.score }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <p>Tidak ada entitas yang terdeteksi oleh BERT</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+
+{% endblock %}

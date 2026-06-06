@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Batch Processor{% endblock %}
+{% block page_title %}Batch Processor{% endblock %}
+
+{% block content %}
+
+<div class="grid-2" style="align-items:start;">
+
+  <!-- UPLOAD FORM -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--primary);"></span>
+        Upload File CSV
+      </div>
+    </div>
+    <div class="card-body">
+      <form method="POST" enctype="multipart/form-data">
+
+        <!-- DROP ZONE -->
+        <div id="drop-zone"
+             onclick="document.getElementById('file-input').click()"
+             style="border:2px dashed var(--border);border-radius:10px;
+                    padding:40px;text-align:center;cursor:pointer;
+                    transition:all 0.2s;margin-bottom:20px;"
+             ondragover="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='var(--primary-light)'"
+             ondragleave="this.style.borderColor='var(--border)';this.style.background=''"
+             ondrop="handleDrop(event)">
+          <i class="fa-solid fa-cloud-arrow-up"
+             style="font-size:36px;color:var(--primary);margin-bottom:12px;display:block;"></i>
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">
+            Klik atau drag & drop file CSV
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);">
+            Format: CSV dengan kolom <code>content_clean</code> atau kolom teks pertama
+          </div>
+          <div id="file-name" style="margin-top:10px;font-size:12px;color:var(--primary);font-weight:600;"></div>
+          <input type="file" id="file-input" name="file" accept=".csv"
+                 style="display:none;" onchange="showFileName(this)">
+        </div>
+
+        <!-- MODEL SELECTOR -->
+        <div style="margin-bottom:20px;">
+          <label class="form-label">Pilih Model</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            {% for val, label in [('spacy','spaCy'),('bert','BERT'),('both','Keduanya')] %}
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;
+                          padding:8px 14px;border-radius:8px;border:1px solid var(--border);
+                          font-size:13px;font-weight:500;">
+              <input type="radio" name="model" value="{{ val }}"
+                     {% if val == 'spacy' %}checked{% endif %}>
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div style="background:var(--amber-light);border:1px solid var(--amber);
+                    border-radius:8px;padding:12px 16px;margin-bottom:20px;
+                    font-size:12px;color:#92400e;">
+          <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>
+          Maksimal <strong>50 baris pertama</strong> yang diproses untuk menjaga performa.
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;">
+          <i class="fa-solid fa-play"></i>
+          Proses NER
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- INFO -->
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background:var(--indigo);"></span>
+          Format CSV yang Diterima
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="background:var(--bg);border-radius:8px;padding:14px;
+                    font-family:'DM Mono',monospace;font-size:12px;line-height:1.8;
+                    color:var(--text-muted);overflow-x:auto;">
+          id,title,content_clean,subreddit<br>
+          abc123,"Post title","Text content...","worldnews"<br>
+          def456,"Another post","More text...","indonesia"
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-muted);">
+          Kolom <code>content_clean</code> akan digunakan sebagai input NER.
+          Jika tidak ada, kolom pertama akan dipakai.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot" style="background:var(--emerald);"></span>
+          Output Format JSON
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="background:var(--bg);border-radius:8px;padding:14px;
+                    font-family:'DM Mono',monospace;font-size:11px;line-height:1.8;
+                    color:var(--text-muted);overflow-x:auto;">
+          [<br>
+          &nbsp;&nbsp;{<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;"text": "Post content...",<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;"entities": [<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{"entity": "Google", "label": "ORG", "model": "spaCy"},<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{"entity": "US", "label": "LOC", "model": "BERT"}<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;]<br>
+          &nbsp;&nbsp;}<br>
+          ]
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- RESULT -->
+{% if result %}
+<div style="margin-top:24px;">
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--emerald);"></span>
+        Hasil Batch Processing — {{ result.total }} Baris
+      </div>
+      <button onclick="downloadJSON()" class="btn btn-emerald" style="padding:7px 14px;font-size:12px;">
+        <i class="fa-solid fa-download"></i>
+        Download JSON
+      </button>
+    </div>
+    <div style="max-height:480px;overflow-y:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Teks</th>
+            <th>Entitas Ditemukan</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i, row in enumerate(result.data) %}
+          <tr>
+            <td style="color:var(--text-muted);font-size:11px;">{{ i+1 }}</td>
+            <td style="font-size:12px;color:var(--text-muted);max-width:280px;">{{ row.text }}</td>
+            <td>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;">
+                {% for e in row.entities %}
+                {% set colors = {'ORG':'#6366f1','LOC':'#0ea5e9','EVENT':'#10b981'} %}
+                {% set c = colors.get(e.label, '#94a3b8') %}
+                <span style="background:{{ c }}15;color:{{ c }};border:1px solid {{ c }}30;
+                             padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600;">
+                  {{ e.entity }}
+                  <span style="opacity:0.6;font-weight:400;">[{{ e.label }}]</span>
+                </span>
+                {% endfor %}
+                {% if not row.entities %}
+                <span style="font-size:11px;color:var(--text-muted);">—</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const jsonData = {{ result.json|tojson }};
+function downloadJSON() {
+  fetch('/api/download-json', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({data: jsonData})
+  }).then(r => r.blob()).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'ner_results.json'; a.click();
+  });
+}
+</script>
+{% endif %}
+
+<script>
+function showFileName(input) {
+  document.getElementById('file-name').textContent =
+    input.files[0] ? '✓ ' + input.files[0].name : '';
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  const input = document.getElementById('file-input');
+  input.files = e.dataTransfer.files;
+  showFileName(input);
+  document.getElementById('drop-zone').style.borderColor = 'var(--border)';
+  document.getElementById('drop-zone').style.background = '';
+}
+</script>
+
+{% endblock %}

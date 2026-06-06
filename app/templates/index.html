@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block page_title %}Overview{% endblock %}
+
+{% block content %}
+
+<!-- STAT CARDS -->
+<div class="stat-grid">
+  <div class="stat-card blue">
+    <div class="stat-icon"><i class="fa-solid fa-database"></i></div>
+    <div class="stat-value">{{ "{:,}".format(stats.total_entities) }}</div>
+    <div class="stat-label">Total Entitas Ditemukan</div>
+  </div>
+  <div class="stat-card indigo">
+    <div class="stat-icon"><i class="fa-brands fa-reddit"></i></div>
+    <div class="stat-value">{{ "{:,}".format(stats.total_posts) }}</div>
+    <div class="stat-label">Total Post Reddit</div>
+  </div>
+  <div class="stat-card emerald">
+    <div class="stat-icon"><i class="fa-solid fa-building"></i></div>
+    <div class="stat-value">{{ "{:,}".format(stats.org) }}</div>
+    <div class="stat-label">Entitas Organisasi (ORG)</div>
+  </div>
+  <div class="stat-card amber">
+    <div class="stat-icon"><i class="fa-solid fa-location-dot"></i></div>
+    <div class="stat-value">{{ "{:,}".format(stats.loc) }}</div>
+    <div class="stat-label">Entitas Lokasi (LOC)</div>
+  </div>
+  <div class="stat-card rose">
+    <div class="stat-icon"><i class="fa-solid fa-calendar-star"></i></div>
+    <div class="stat-value">{{ "{:,}".format(stats.event) }}</div>
+    <div class="stat-label">Entitas Event (EVENT)</div>
+  </div>
+</div>
+
+<!-- ROW 1 -->
+<div class="grid-2" style="margin-bottom:20px;">
+
+  <!-- Model Distribution -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--indigo);"></span>
+        Distribusi Model NER
+      </div>
+    </div>
+    <div class="card-body">
+      <canvas id="modelChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Entity Distribution -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--emerald);"></span>
+        Distribusi Label Entitas
+      </div>
+    </div>
+    <div class="card-body">
+      <canvas id="labelChart" height="220"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- ROW 2 -->
+<div class="grid-2" style="margin-bottom:20px;">
+
+  <!-- Subreddit Distribution -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--primary);"></span>
+        Top Subreddit
+      </div>
+    </div>
+    <div class="card-body">
+      <canvas id="subredditChart" height="260"></canvas>
+    </div>
+  </div>
+
+  <!-- Top Entities Table -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="dot" style="background:var(--amber);"></span>
+        Top Entitas Terpopuler
+      </div>
+      <a href="/dashboard" class="btn btn-outline" style="padding:5px 12px;font-size:12px;">
+        Lihat Semua <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+    <div class="card-body" style="padding:0;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Entitas</th>
+            <th>Label</th>
+            <th>Frekuensi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i, e in enumerate(top_entities) %}
+          <tr>
+            <td style="color:var(--text-muted);font-size:12px;">{{ i+1 }}</td>
+            <td style="font-weight:600;">{{ e.entity }}</td>
+            <td>
+              <span class="badge badge-{{ e.label|lower }}">{{ e.label }}</span>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="progress-bar-wrap" style="width:80px;">
+                  <div class="progress-bar" style="width:{{ [e.freq / top_entities[0].freq * 100, 100]|min|int }}%;background:var(--primary);"></div>
+                </div>
+                <span style="font-family:'DM Mono',monospace;font-size:12px;">{{ "{:,}".format(e.freq) }}</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- INFO CARDS -->
+<div class="grid-3">
+  <div class="card" style="padding:20px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <div class="stat-icon" style="background:var(--indigo-light);color:var(--indigo);margin:0;">
+        <i class="fa-solid fa-robot"></i>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:14px;">spaCy</div>
+        <div style="font-size:11px;color:var(--text-muted);">en_core_web_trf</div>
+      </div>
+    </div>
+    <div style="font-size:28px;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:4px;">
+      {{ "{:,}".format(stats.spacy) }}
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);">Entitas ditemukan</div>
+  </div>
+
+  <div class="card" style="padding:20px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <div class="stat-icon" style="background:var(--emerald-light);color:var(--emerald);margin:0;">
+        <i class="fa-solid fa-microchip"></i>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:14px;">BERT</div>
+        <div style="font-size:11px;color:var(--text-muted);">dslim/bert-base-NER</div>
+      </div>
+    </div>
+    <div style="font-size:28px;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:4px;">
+      {{ "{:,}".format(stats.bert) }}
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);">Entitas ditemukan</div>
+  </div>
+
+  <div class="card" style="padding:20px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <div class="stat-icon" style="background:var(--amber-light);color:var(--amber);margin:0;">
+        <i class="fa-brands fa-reddit-alien"></i>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:14px;">Dataset</div>
+        <div style="font-size:11px;color:var(--text-muted);">Reddit JSON API</div>
+      </div>
+    </div>
+    <div style="font-size:28px;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:4px;">24</div>
+    <div style="font-size:12px;color:var(--text-muted);">Subreddit dikumpulkan</div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const subreddits = {{ top_subreddits|safe }};
+const stats = {{ stats|tojson }};
+
+// Model Chart
+new Chart(document.getElementById('modelChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['spaCy', 'BERT (Transformers)'],
+    datasets: [{
+      data: [stats.spacy, stats.bert],
+      backgroundColor: ['#6366f1','#0ea5e9'],
+      borderWidth: 0,
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, padding: 16 } }
+    },
+    cutout: '65%'
+  }
+});
+
+// Label Chart
+new Chart(document.getElementById('labelChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['ORG', 'LOC', 'EVENT'],
+    datasets: [{
+      data: [stats.org, stats.loc, stats.event],
+      backgroundColor: ['#6366f1','#0ea5e9','#10b981'],
+      borderWidth: 0,
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, padding: 16 } }
+    },
+    cutout: '65%'
+  }
+});
+
+// Subreddit Chart
+const subLabels = Object.keys(subreddits);
+const subValues = Object.values(subreddits);
+new Chart(document.getElementById('subredditChart'), {
+  type: 'bar',
+  data: {
+    labels: subLabels,
+    datasets: [{
+      label: 'Jumlah Entitas',
+      data: subValues,
+      backgroundColor: 'rgba(14,165,233,0.15)',
+      borderColor: '#0ea5e9',
+      borderWidth: 1.5,
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 11 } } },
+      y: { grid: { color: '#f1f5f9' }, ticks: { font: { family: 'DM Mono', size: 11 } } }
+    }
+  }
+});
+</script>
+{% endblock %}

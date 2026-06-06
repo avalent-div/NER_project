@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Model Comparison{% endblock %}
+{% block page_title %}Model Comparison{% endblock %}
+
+{% block content %}
+
+<!-- SUMMARY CARDS -->
+<div class="grid-3" style="margin-bottom:24px;">
+  <div class="card" style="padding:20px;text-align:center;border-top:3px solid var(--indigo);">
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;font-weight:600;">Hanya spaCy</div>
+    <div style="font-size:36px;font-weight:700;color:var(--indigo);font-family:'DM Mono',monospace;">{{ "{:,}".format(only_spacy) }}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">entitas unik</div>
+  </div>
+  <div class="card" style="padding:20px;text-align:center;border-top:3px solid var(--emerald);">
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;font-weight:600;">Kedua Model</div>
+    <div style="font-size:36px;font-weight:700;color:var(--emerald);font-family:'DM Mono',monospace;">{{ "{:,}".format(both) }}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">entitas sama</div>
+  </div>
+  <div class="card" style="padding:20px;text-align:center;border-top:3px solid var(--primary);">
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;font-weight:600;">Hanya BERT</div>
+    <div style="font-size:36px;font-weight:700;color:var(--primary);font-family:'DM Mono',monospace;">{{ "{:,}".format(only_bert) }}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">entitas unik</div>
+  </div>
+</div>
+
+<!-- TOTAL PER LABEL -->
+<div class="card" style="margin-bottom:24px;">
+  <div class="card-header">
+    <div class="card-title">
+      <span class="dot" style="background:var(--indigo);"></span>
+      Perbandingan Total Entitas per Label
+    </div>
+  </div>
+  <div class="card-body">
+    <canvas id="compareChart" height="120"></canvas>
+  </div>
+</div>
+
+<!-- PER LABEL COMPARISON -->
+{% for label, color in [('ORG','#6366f1'),('LOC','#0ea5e9'),('EVENT','#10b981')] %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <div class="card-title">
+      <span class="dot" style="background:{{ color }};"></span>
+      Top 5 {{ label }} — spaCy vs BERT
+    </div>
+    <span class="badge badge-{{ label|lower }}">{{ label }}</span>
+  </div>
+  <div class="card-body">
+    <div class="grid-2">
+      <!-- spaCy -->
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--indigo);"></div>
+          <span style="font-size:13px;font-weight:600;">spaCy</span>
+        </div>
+        <div id="spacy-{{ label|lower }}-list"></div>
+      </div>
+      <!-- BERT -->
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--primary);"></div>
+          <span style="font-size:13px;font-weight:600;">BERT</span>
+        </div>
+        <div id="bert-{{ label|lower }}-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const spacy_counts  = {{ spacy_counts|tojson }};
+const bert_counts   = {{ bert_counts|tojson }};
+const cmp           = {{ comparison_data|safe }};
+
+// Compare chart
+new Chart(document.getElementById('compareChart'), {
+  type: 'bar',
+  data: {
+    labels: ['ORG', 'LOC', 'EVENT'],
+    datasets: [
+      {
+        label: 'spaCy',
+        data: [spacy_counts.ORG||0, spacy_counts.LOC||0, spacy_counts.EVENT||0],
+        backgroundColor: 'rgba(99,102,241,0.2)',
+        borderColor: '#6366f1',
+        borderWidth: 2,
+        borderRadius: 6
+      },
+      {
+        label: 'BERT',
+        data: [bert_counts.ORG||0, bert_counts.LOC||0, bert_counts.EVENT||0],
+        backgroundColor: 'rgba(14,165,233,0.2)',
+        borderColor: '#0ea5e9',
+        borderWidth: 2,
+        borderRadius: 6
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'top', labels: { font: { family: 'DM Sans', size: 12 } } }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 12 } } },
+      y: { grid: { color: '#f1f5f9' }, ticks: { font: { family: 'DM Mono', size: 11 } } }
+    }
+  }
+});
+
+// Fill per-label lists
+function fillList(elId, data, color) {
+  const el = document.getElementById(elId);
+  if (!el || !data) return;
+  data.forEach((d, i) => {
+    const pct = data[0].freq ? Math.round(d.freq / data[0].freq * 100) : 0;
+    el.innerHTML += `
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;">${d.entity}</span>
+          <span style="font-size:12px;font-family:'DM Mono',monospace;color:${color};">${d.freq.toLocaleString()}</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" style="width:${pct}%;background:${color};"></div>
+        </div>
+      </div>`;
+  });
+}
+
+['ORG','LOC','EVENT'].forEach(label => {
+  const l = label.toLowerCase();
+  fillList(`spacy-${l}-list`, cmp[label]?.spacy, '#6366f1');
+  fillList(`bert-${l}-list`,  cmp[label]?.bert,  '#0ea5e9');
+});
+</script>
+{% endblock %}
