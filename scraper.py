@@ -167,7 +167,7 @@ def scrape_until_target():
     df = pd.DataFrame(all_data)
 
     # simpan dengan quoting yang benar biar CSV tidak corrupt
-    df.to_csv("reddit_raw.csv", index=False, quoting=csv.QUOTE_ALL)
+    df.to_csv("data/reddit_raw.csv", index=False, quoting=csv.QUOTE_ALL)
 
     print(f"\nselesai semua!")
     print(f"terkumpul : {len(df)} data")
@@ -189,4 +189,4 @@ if __name__ == "__main__":
     print("\ndistribusi subreddit:")
     print(df["subreddit"].value_counts())
 
-    print("\ndata disimpan ke reddit_raw.csv")
+    print("\ndata disimpan ke data/reddit_raw.csv")

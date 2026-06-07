@@ -12,7 +12,7 @@ spark = SparkSession.builder \
 spark.sparkContext.setLogLevel("ERROR")
 
 # baca data mentah
-path = os.path.abspath("reddit_raw.csv")
+path = os.path.abspath("data/reddit_raw.csv")
 print(f"baca data dari {path}...")
 
 df = spark.read.csv(
@@ -80,10 +80,10 @@ df.groupBy("subreddit") \
   .show(50)
 
 # simpan ke csv
-output_path = os.path.abspath("reddit_clean.csv")
+output_path = os.path.abspath("data/reddit_clean.csv")
 df_pandas = df.toPandas()
 df_pandas.to_csv(output_path, index=False, quoting=1)
-print(f"\ndata disimpan ke reddit_clean.csv")
+print(f"\ndata disimpan ke data/reddit_clean.csv")
 print(f"total baris tersimpan: {len(df_pandas)}")
 
 spark.stop()

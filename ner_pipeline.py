@@ -155,7 +155,7 @@ def aggregate_spark(df_all):
                .agg(count("*").alias("freq")) \
                .orderBy(desc("freq"))
 
-    df_agg.toPandas().to_csv("ner_aggregated.csv", index=False)
+    df_agg.toPandas().to_csv("data/ner_aggregated.csv", index=False)
 
     spark.stop()
     print("\nagregasi selesai, disimpan ke ner_aggregated.csv")
@@ -166,7 +166,7 @@ def aggregate_spark(df_all):
 # ─────────────────────────────────────────
 if __name__ == "__main__":
     print("baca reddit_clean.csv...")
-    df = pd.read_csv("reddit_clean.csv")
+    df = pd.read_csv("data/reddit_clean.csv")
     print(f"total data: {len(df)}")
 
     print("\n" + "=" * 50)
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     print("STEP 3: gabung hasil")
     print("=" * 50)
     df_all = pd.concat([df_spacy, df_trans], ignore_index=True)
-    df_all.to_csv("ner_results.csv", index=False)
+    df_all.to_csv("data/ner_results.csv", index=False)
     print(f"total entitas: {len(df_all)}")
     print(df_all["label"].value_counts())
 
